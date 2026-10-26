@@ -15,29 +15,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download AutoHotkey v2 and Ahk2Exe
-        shell: pwsh
-        run: |
-          # v2: интерпретатор, который станет основой exe
-          Invoke-WebRequest https://www.autohotkey.com/download/ahk-v2.zip -OutFile ahk-v2.zip
-          Expand-Archive ahk-v2.zip -DestinationPath ahk-v2
-          # компилятор Ahk2Exe поставляется в архиве v1
-          Invoke-WebRequest https://www.autohotkey.com/download/ahk.zip -OutFile ahk-v1.zip
-          Expand-Archive ahk-v1.zip -DestinationPath ahk-v1
+      # autohotkey.com is behind a Cloudflare check that blocks CI runners,
+      # so AutoHotkey v2 and Ahk2Exe are installed from their GitHub releases.
+      - name: Install AutoHotkey v2 and Ahk2Exe
+        id: ahk
+        uses: holy-tao/install-autohotkey@v2
+        with:
+          version: latest
+          compiler: latest
+          destination: ${{ runner.temp }}
 
       - name: Compile
         shell: pwsh
+        env:
+          AHK2EXE: ${{ steps.ahk.outputs.ahk2Exe }}
+          AHK64: ${{ steps.ahk.outputs.ahk64 }}
+          AHK32: ${{ steps.ahk.outputs.ahk32 }}
         run: |
-          $compiler = Resolve-Path ahk-v1\Compiler\Ahk2Exe.exe
-          $script   = Resolve-Path MicToggle.ahk
+          $script = Resolve-Path MicToggle.ahk
           $builds = @(
-            @{ Base = "ahk-v2\AutoHotkey64.exe"; Out = "MicToggle.exe" }
-            @{ Base = "ahk-v2\AutoHotkey32.exe"; Out = "MicToggle-x86.exe" }
+            @{ Base = $env:AHK64; Out = "MicToggle.exe" }
+            @{ Base = $env:AHK32; Out = "MicToggle-x86.exe" }
           )
           foreach ($b in $builds) {
-            $base = Resolve-Path $b.Base
-            $out  = Join-Path $PWD $b.Out
-            $p = Start-Process $compiler -ArgumentList "/in `"$script`" /out `"$out`" /base `"$base`" /silent verbose" -Wait -PassThru -NoNewWindow
+            $out = Join-Path $PWD $b.Out
+            $p = Start-Process $env:AHK2EXE -ArgumentList "/in `"$script`" /out `"$out`" /base `"$($b.Base)`" /silent verbose" -Wait -PassThru -NoNewWindow
             if ($p.ExitCode -ne 0 -or -not (Test-Path $out)) {
               throw "Compilation of $($b.Out) failed (exit code $($p.ExitCode))"
             }
