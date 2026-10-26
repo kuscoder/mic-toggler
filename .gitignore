@@ -1,0 +1,6 @@
+# Built files
+*.exe
+SHA256SUMS.txt
+
+# Backups
+*.bak*
