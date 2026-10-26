@@ -19,7 +19,7 @@ jobs:
       # so AutoHotkey v2 and Ahk2Exe are installed from their GitHub releases.
       - name: Install AutoHotkey v2 and Ahk2Exe
         id: ahk
-        uses: holy-tao/install-autohotkey@v2
+        uses: holy-tao/install-autohotkey@v2.1.0
         with:
           version: latest
           compiler: latest
